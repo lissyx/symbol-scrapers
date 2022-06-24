@@ -1,4 +1,5 @@
 #!/bin/sh
+
 unalias -a
 
 if [ -z "${DUMP_SYMS}" ]; then
@@ -47,10 +48,13 @@ get_package_urls() {
 }
 
 fetch_packages() {
+  printf "Starting fetch"
   echo "${1}" | while read line; do
     [ -z "${line}" ] && continue
+    printf "Fetching ${line}"
     get_package_urls ${line} >> packages.txt
   done
+  printf "Finished fetch"
 
   sed -i -e 's/%2b/+/g' packages.txt
   sort packages.txt | wget -o wget.log --progress=dot:mega -P downloads -c -i -
@@ -331,6 +335,7 @@ function process_packages() {
 
 echo "${packages}" | while read line; do
   [ -z "${line}" ] && continue
+  printf "Processing ${line}"
   process_packages ${line}
 done
 
