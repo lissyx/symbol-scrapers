@@ -2,8 +2,22 @@
 
 . $(dirname $0)/../common.sh
 
+set -ex
+
 URL="https://fedora.mirror.wearetriple.com/linux"
 RELEASES="35 36 37 test/37_Beta"
+
+function wget_safe()
+{
+  echo "wget $@"
+  local wget_output=$(wget $@)
+  local wget_status=$?
+  if [ ${wget_status} -ne 0 ]; then
+    echo "wget error: ${wget_status}"
+    echo ${wget_output}
+    exit 1;
+  fi
+}
 
 get_package_urls() {
   local package_name=${1}
@@ -52,9 +66,10 @@ fetch_packages() {
     get_package_indexes ${line}
   done | sort -u > indexes.txt
 
-  wget -o wget.log --progress=dot:mega --compression=auto -k -i indexes.txt
+  wget_safe -o wget.log --progress=dot:mega --compression=auto -k -i indexes.txt
+  cp wget.log /builds/worker/artifacts/wget_fetch_packages_indexes.log
 
-  find . -name "index.html*" | while read path; do
+  find . -type f -name "index.html*" | while read path; do
     mv "${path}" "${path}.bak"
     xmllint --nowarning --format --html --output "${path}" "${path}.bak" 2>/dev/null
     rm -f "${path}.bak"
@@ -67,7 +82,8 @@ fetch_packages() {
 
   rm -f index.html*
 
-  wget -o wget.log --progress=dot:mega -P downloads -c -i packages.txt
+  wget_safe -o wget.log --progress=dot:mega -P downloads -c -i packages.txt
+  cp wget.log /builds/worker/artifacts/wget_fetch_packages_packages.log
 
   rev packages.txt | cut -d'/' -f1 | rev > package_names.txt
 }
@@ -89,8 +105,13 @@ function find_debuginfo_package() {
 
 function unpack_package() {
   mkdir packages
-  rpm2cpio "${1}" | cpio --quiet -i -d -D packages
-  rpm2cpio "${2}" | cpio --quiet -i -d -D packages
+  if [ ! -z "${1}" ]; then
+    rpm2cpio "${1}" | cpio --quiet -i -d -D packages
+  fi
+
+  if [ ! -z "${2}" ]; then
+    rpm2cpio "${2}" | cpio --quiet -i -d -D packages
+  fi
 }
 
 function get_build_id {
