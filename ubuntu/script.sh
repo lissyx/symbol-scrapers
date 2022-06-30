@@ -2,7 +2,7 @@
 
 . $(dirname $0)/../common.sh
 
-URL="http://nl.archive.ubuntu.com/ubuntu/pool"
+URL=${URL:-"http://nl.archive.ubuntu.com/ubuntu/pool"}
 DDEB_URL="http://ddebs.ubuntu.com/pool"
 
 get_package_urls() {
